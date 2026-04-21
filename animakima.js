@@ -1,60 +1,94 @@
 (function() {
     'use strict';
 
-    if (window.animakima_loaded) return;
-    window.animakima_loaded = true;
+    // Запобігаємо подвійному завантаженню
+    if (window.AnimakimaLoaded) return;
+    window.AnimakimaLoaded = true;
 
     const BASE_URL = 'https://animakima.ru';
 
-    // Універсальний запит
-    function fetchHtml(url, callback) {
-        if (Lampa.Api && Lampa.Api.fetch) {
-            Lampa.Api.fetch(url, callback, () => callback(null));
-        } else if (Lampa.Utils && Lampa.Utils.ajax) {
-            Lampa.Utils.ajax(url, callback, () => callback(null));
+    // --- Допоміжна функція для запитів ---
+    function request(url, callback) {
+        if (typeof Lampa.Utils !== 'undefined' && Lampa.Utils.ajax) {
+            Lampa.Utils.ajax(url, callback, (err) => {
+                console.error('[Animakima] Ajax error:', err);
+                callback(null);
+            });
         } else {
-            fetch(url).then(r => r.text()).then(callback).catch(() => callback(null));
+            fetch(url)
+                .then(r => r.text())
+                .then(callback)
+                .catch(e => {
+                    console.error('[Animakima] Fetch error:', e);
+                    callback(null);
+                });
         }
     }
 
-    // Пошук
+    // --- Пошук ---
     function search(query, callback) {
-        if (!query) return callback([]);
+        if (!query || query.trim() === '') {
+            callback([]);
+            return;
+        }
         const url = `${BASE_URL}/search?q=${encodeURIComponent(query)}`;
-        fetchHtml(url, (html) => {
-            if (!html) return callback([]);
+        request(url, (html) => {
+            if (!html) {
+                callback([]);
+                return;
+            }
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
-            const items = doc.querySelectorAll('.shortStory, .movie-item, .anime-item, .search-result');
             const results = [];
+            // Селектори для пошуку (можна розширити)
+            const items = doc.querySelectorAll('.shortStory, .movie-item, .anime-item, .search-item, .item');
             items.forEach(el => {
-                const a = el.querySelector('a');
-                if (!a) return;
-                const href = a.getAttribute('href');
-                let title = a.textContent.trim();
+                const link = el.querySelector('a');
+                if (!link) return;
+                const href = link.getAttribute('href');
+                let title = link.textContent.trim();
+                if (!title) title = el.querySelector('.title')?.textContent.trim() || '';
                 if (href && title) {
                     let id = href.split('/').filter(Boolean).pop();
-                    results.push({ id, title, poster: null, description: '', source: 'animakima' });
+                    if (id && !isNaN(id)) id = id; // якщо id числовий
+                    results.push({
+                        id: id,
+                        title: title,
+                        poster: null,
+                        description: '',
+                        source: 'animakima'
+                    });
                 }
             });
+            console.log('[Animakima] Search results:', results.length);
             callback(results);
         });
     }
 
-    // Деталі (список серій)
+    // --- Отримання деталей (список серій) ---
     function full(item, callback) {
-        if (!item.id) return callback(item);
+        if (!item.id) {
+            callback(item);
+            return;
+        }
         const url = `${BASE_URL}/anime/${item.id}`;
-        fetchHtml(url, (html) => {
-            if (!html) return callback(item);
+        request(url, (html) => {
+            if (!html) {
+                callback(item);
+                return;
+            }
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
-            const desc = doc.querySelector('.description, .full-story')?.textContent.trim() || '';
-            item.description = desc;
+            // Опис
+            const descElem = doc.querySelector('.description, .full-story, .story');
+            if (descElem) item.description = descElem.textContent.trim();
+            // Серії
             const episodes = [];
-            doc.querySelectorAll('.episodes-list a, .series a, .episode a').forEach(link => {
+            const epLinks = doc.querySelectorAll('.episodes-list a, .series-list a, .episode a');
+            epLinks.forEach(link => {
                 let epUrl = link.getAttribute('href');
-                if (epUrl && !epUrl.startsWith('http')) epUrl = BASE_URL + epUrl;
+                if (!epUrl) return;
+                if (!epUrl.startsWith('http')) epUrl = BASE_URL + epUrl;
                 episodes.push({
                     id: epUrl.split('/').filter(Boolean).pop(),
                     title: link.textContent.trim(),
@@ -66,27 +100,44 @@
         });
     }
 
-    // Отримання відео
+    // --- Отримання відео для відтворення ---
     function play(item, callback) {
-        if (!item.url) return callback(null);
-        fetchHtml(item.url, (html) => {
-            if (!html) return callback(null);
+        if (!item.url) {
+            callback(null);
+            return;
+        }
+        request(item.url, (html) => {
+            if (!html) {
+                callback(null);
+                return;
+            }
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
-            let video = doc.querySelector('video source')?.getAttribute('src');
-            if (!video) video = doc.querySelector('iframe')?.getAttribute('src');
-            callback(video || null);
+            // Шукаємо video source
+            let videoUrl = doc.querySelector('video source')?.getAttribute('src');
+            if (!videoUrl) {
+                // Шукаємо iframe
+                const iframe = doc.querySelector('iframe');
+                if (iframe) videoUrl = iframe.getAttribute('src');
+            }
+            if (!videoUrl) {
+                // Можливо, відео завантажується через JavaScript, але для початку достатньо
+                console.warn('[Animakima] Video not found on page:', item.url);
+            }
+            callback(videoUrl || null);
         });
     }
 
-    // Реєстрація джерела
-    if (Lampa.Source && Lampa.Source.add) {
-        Lampa.Source.add('animakima', { title: 'Animakima', search, full, play });
-        console.log('✅ Animakima: джерело зареєстровано через Lampa.Source');
-    } else if (Lampa.Api && Lampa.Api.addSource) {
-        Lampa.Api.addSource({ title: 'Animakima', value: 'animakima', search, full, play });
-        console.log('✅ Animakima: джерело зареєстровано через Lampa.Api');
+    // --- Реєстрація джерела ---
+    if (typeof Lampa !== 'undefined' && Lampa.Source && Lampa.Source.add) {
+        Lampa.Source.add('animakima', {
+            title: 'Animakima',
+            search: search,
+            full: full,
+            play: play
+        });
+        console.log('[Animakima] Джерело успішно зареєстровано через Lampa.Source');
     } else {
-        console.error('❌ Animakima: не вдалося зареєструвати джерело');
+        console.error('[Animakima] Не вдалося зареєструвати джерело: Lampa.Source.add не знайдено');
     }
 })();

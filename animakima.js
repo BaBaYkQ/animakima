@@ -2,30 +2,25 @@
     'use strict';
 
     function startPlugin() {
-        console.log('=== LAMPA DEBUG START ===');
-        console.log('Lampa keys:', Object.keys(Lampa));
+        console.log('=== API DEBUG START ===');
+
+        console.log('Lampa.Api keys:', Object.keys(Lampa.Api || {}));
 
         if (Lampa.Params) {
-            console.log('Lampa.Params:', Lampa.Params);
-            console.log('Lampa.Params.values:', Lampa.Params.values);
+            console.log('Lampa.Params keys:', Object.keys(Lampa.Params || {}));
         }
 
-        if (Lampa.Api) {
-            console.log('Lampa.Api:', Lampa.Api);
-            console.log('Lampa.Api.sources:', Lampa.Api.sources);
+        if (Lampa.Component) {
+            console.log('Lampa.Component keys:', Object.keys(Lampa.Component || {}));
         }
 
-        if (Lampa.Storage) {
-            console.log('Lampa.Storage:', Lampa.Storage);
-        }
-
-        console.log('=== LAMPA DEBUG END ===');
+        console.log('=== API DEBUG END ===');
     }
 
     if (window.appready) startPlugin();
     else {
-        Lampa.Listener.follow('app', function (e) {
-            if (e.type === 'ready') startPlugin();
+        Lampa.Listener.follow('app', function(e){
+            if(e.type === 'ready') startPlugin();
         });
     }
 })();

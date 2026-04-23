@@ -1,26 +1,23 @@
 (function () {
-    'use strict';
+    alert('DEBUG: Animakima plugin starting...');
+    alert('DEBUG: Lampa ready? ' + (window.appready ? 'yes' : 'no'));
 
-    function startPlugin() {
-        console.log('=== API DEBUG START ===');
-
-        console.log('Lampa.Api keys:', Object.keys(Lampa.Api || {}));
-
-        if (Lampa.Params) {
-            console.log('Lampa.Params keys:', Object.keys(Lampa.Params || {}));
-        }
-
-        if (Lampa.Component) {
-            console.log('Lampa.Component keys:', Object.keys(Lampa.Component || {}));
-        }
-
-        console.log('=== API DEBUG END ===');
-    }
-
-    if (window.appready) startPlugin();
-    else {
+    if (window.appready) {
+        startPlugin();
+    } else {
         Lampa.Listener.follow('app', function(e){
             if(e.type === 'ready') startPlugin();
         });
+    }
+
+    function startPlugin() {
+        alert('DEBUG: StartPlugin function called');
+        
+        try {
+            var apiKeys = Object.keys(Lampa.Api || {});
+            alert('DEBUG: Lampa.Api keys: ' + JSON.stringify(apiKeys));
+        } catch(e) {
+            alert('DEBUG: Error: ' + e.message);
+        }
     }
 })();

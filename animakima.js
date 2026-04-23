@@ -2,26 +2,24 @@
     'use strict';
 
     function startPlugin() {
-        console.log('Animakima source plugin started');
+        console.log('=== LAMPA DEBUG START ===');
+        console.log('Lampa keys:', Object.keys(Lampa));
 
-        if (!Lampa.Params) return;
-
-        if (!Lampa.Params.values.source) {
-            Lampa.Params.values.source = [];
+        if (Lampa.Params) {
+            console.log('Lampa.Params:', Lampa.Params);
+            console.log('Lampa.Params.values:', Lampa.Params.values);
         }
 
-        let exists = Lampa.Params.values.source.some(function(s){
-            return s.value === 'animakima';
-        });
-
-        if (!exists) {
-            Lampa.Params.values.source.push({
-                title: 'Animakima',
-                value: 'animakima'
-            });
+        if (Lampa.Api) {
+            console.log('Lampa.Api:', Lampa.Api);
+            console.log('Lampa.Api.sources:', Lampa.Api.sources);
         }
 
-        console.log('Animakima source registered');
+        if (Lampa.Storage) {
+            console.log('Lampa.Storage:', Lampa.Storage);
+        }
+
+        console.log('=== LAMPA DEBUG END ===');
     }
 
     if (window.appready) startPlugin();

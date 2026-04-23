@@ -1,9 +1,5 @@
 {
-  "name": "Animakima",
+  "name": "animakima",
   "version": "1.0.0",
-  "author": "BaBaYkQ",
-  "description": "Animakima source for Lampa",
-  "components": [
-    "animakima.js"
-  ]
+  "url": "https://babaykq.github.io/animakima/animakima.js"
 }
